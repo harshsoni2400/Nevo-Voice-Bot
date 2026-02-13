@@ -1,23 +1,26 @@
 'use client';
 
-import { Mic, MicOff, Loader2, Volume2 } from 'lucide-react';
+import { Mic, MicOff, Loader2, Volume2, Square } from 'lucide-react';
 import type { AgentStatus } from '@/lib/types';
 
 interface VoiceButtonProps {
   status: AgentStatus;
   onStart: () => void;
   onStop: () => void;
+  onInterrupt?: () => void;
 }
 
-export default function VoiceButton({ status, onStart, onStop }: VoiceButtonProps) {
+export default function VoiceButton({ status, onStart, onStop, onInterrupt }: VoiceButtonProps) {
   const isListening = status === 'listening';
   const isProcessing = status === 'processing' || status === 'thinking';
   const isSpeaking = status === 'speaking';
-  const isActive = isListening || isProcessing || isSpeaking;
 
   const handleClick = () => {
     if (isListening) {
       onStop();
+    } else if (isSpeaking && onInterrupt) {
+      // Interrupt the AI speaking and start listening
+      onInterrupt();
     } else if (status === 'idle' || status === 'error') {
       onStart();
     }
@@ -25,7 +28,7 @@ export default function VoiceButton({ status, onStart, onStop }: VoiceButtonProp
 
   const getIcon = () => {
     if (isProcessing) return <Loader2 className="w-8 h-8 animate-spin" />;
-    if (isSpeaking) return <Volume2 className="w-8 h-8" />;
+    if (isSpeaking) return <Square className="w-6 h-6" />;
     if (isListening) return <MicOff className="w-8 h-8" />;
     return <Mic className="w-8 h-8" />;
   };
@@ -35,7 +38,7 @@ export default function VoiceButton({ status, onStart, onStop }: VoiceButtonProp
       case 'listening': return 'Listening... Tap to stop';
       case 'processing': return 'Transcribing...';
       case 'thinking': return 'Thinking...';
-      case 'speaking': return 'Speaking...';
+      case 'speaking': return 'Tap to interrupt';
       case 'error': return 'Tap to try again';
       default: return 'Tap to speak';
     }
@@ -62,15 +65,17 @@ export default function VoiceButton({ status, onStart, onStop }: VoiceButtonProp
       {/* Main button */}
       <button
         onClick={handleClick}
-        disabled={isProcessing || isSpeaking}
+        disabled={isProcessing}
         className={`
           relative w-20 h-20 rounded-full flex items-center justify-center
           transition-all duration-300 ease-out
           ${isListening
             ? 'bg-red-500 hover:bg-red-600 mic-pulsing scale-110'
-            : isProcessing || isSpeaking
-              ? 'bg-nyvo-blue/50 cursor-not-allowed'
-              : 'bg-nyvo-blue hover:bg-blue-500 hover:scale-105 active:scale-95'
+            : isSpeaking
+              ? 'bg-orange-500 hover:bg-orange-600 cursor-pointer'
+              : isProcessing
+                ? 'bg-nyvo-blue/50 cursor-not-allowed'
+                : 'bg-nyvo-blue hover:bg-blue-500 hover:scale-105 active:scale-95'
           }
           ${status === 'error' ? 'bg-red-500/70 hover:bg-red-500' : ''}
           disabled:opacity-70
@@ -88,8 +93,8 @@ export default function VoiceButton({ status, onStart, onStop }: VoiceButtonProp
         {/* Speaking animation rings */}
         {isSpeaking && (
           <>
-            <span className="absolute inset-[-4px] rounded-full border-2 border-nyvo-blue/40 animate-pulse" />
-            <span className="absolute inset-[-10px] rounded-full border border-nyvo-blue/20 animate-pulse" style={{ animationDelay: '0.3s' }} />
+            <span className="absolute inset-[-4px] rounded-full border-2 border-orange-400/40 animate-pulse" />
+            <span className="absolute inset-[-10px] rounded-full border border-orange-400/20 animate-pulse" style={{ animationDelay: '0.3s' }} />
           </>
         )}
 

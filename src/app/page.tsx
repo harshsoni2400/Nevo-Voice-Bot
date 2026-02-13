@@ -19,8 +19,27 @@ export default function VoiceAgentPage() {
   const audioChunksRef = useRef<Blob[]>([]);
   const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
 
+  // ─── Stop any playing audio ─────────────────────────────
+  const stopAudio = useCallback(() => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current.currentTime = 0;
+      audioPlayerRef.current = null;
+    }
+  }, []);
+
+  // ─── Interrupt speaking & start listening ───────────────
+  const interruptAndListen = useCallback(async () => {
+    stopAudio();
+    setStatus('idle');
+    // Small delay then start recording
+    setTimeout(() => {
+      startRecordingFn();
+    }, 200);
+  }, []);
+
   // ─── Start Recording ──────────────────────────────────
-  const startRecording = useCallback(async () => {
+  const startRecordingFn = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: {
@@ -53,7 +72,7 @@ export default function VoiceAgentPage() {
       };
 
       mediaRecorderRef.current = mediaRecorder;
-      mediaRecorder.start(250); // Collect data every 250ms
+      mediaRecorder.start(250);
       setStatus('listening');
     } catch (error) {
       console.error('Microphone access error:', error);
@@ -63,6 +82,10 @@ export default function VoiceAgentPage() {
         : 'Could not access microphone. Please allow microphone permission in your browser settings.'
       );
     }
+  };
+
+  const startRecording = useCallback(async () => {
+    await startRecordingFn();
   }, [language]);
 
   // ─── Stop Recording ───────────────────────────────────
@@ -156,8 +179,8 @@ export default function VoiceAgentPage() {
     try {
       setStatus('speaking');
 
-      // Truncate for TTS if too long (ElevenLabs has limits)
-      const ttsText = text.length > 2000 ? text.substring(0, 2000) + '...' : text;
+      // Truncate for TTS if too long
+      const ttsText = text.length > 800 ? text.substring(0, 800) + '...' : text;
 
       const synthRes = await fetch('/api/synthesize', {
         method: 'POST',
@@ -174,22 +197,23 @@ export default function VoiceAgentPage() {
       const audioBlob = await synthRes.blob();
       const audioUrl = URL.createObjectURL(audioBlob);
 
-      // Play audio
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-      }
+      // Stop any existing audio
+      stopAudio();
 
       const audio = new Audio(audioUrl);
       audioPlayerRef.current = audio;
 
       audio.onended = () => {
-        setStatus('idle');
         URL.revokeObjectURL(audioUrl);
+        audioPlayerRef.current = null;
+        // Auto-transition to idle — user can tap to speak again
+        setStatus('idle');
       };
 
       audio.onerror = () => {
-        setStatus('idle');
         URL.revokeObjectURL(audioUrl);
+        audioPlayerRef.current = null;
+        setStatus('idle');
       };
 
       await audio.play();
@@ -285,6 +309,7 @@ export default function VoiceAgentPage() {
               status={status}
               onStart={startRecording}
               onStop={stopRecording}
+              onInterrupt={interruptAndListen}
             />
           </div>
 

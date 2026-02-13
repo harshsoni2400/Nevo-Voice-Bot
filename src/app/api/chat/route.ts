@@ -76,10 +76,10 @@ ${ragContext || 'No specific context found — use your general insurance knowle
       content: message,
     });
 
-    // Call Claude with tools
+    // Call Claude with tools — keep max_tokens low for voice brevity
     let response = await anthropic.messages.create({
       model: 'claude-sonnet-4-20250514',
-      max_tokens: 1024,
+      max_tokens: 400,
       system: augmentedSystem,
       tools: TOOLS,
       messages,
@@ -119,7 +119,7 @@ ${ragContext || 'No specific context found — use your general insurance knowle
       // Call Claude again with tool results
       response = await anthropic.messages.create({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 1024,
+        max_tokens: 400,
         system: augmentedSystem,
         tools: TOOLS,
         messages,
