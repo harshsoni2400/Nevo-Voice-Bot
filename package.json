@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "node scripts/build-knowledge-base.js && next build",
+    "build": "next build",
     "start": "next start",
     "lint": "next lint",
     "build:kb": "node scripts/build-knowledge-base.js"
